@@ -27,13 +27,28 @@ class WhatsAppService extends EventEmitter {
                 '--disable-features=VizDisplayCompositor',
                 '--no-first-run',
                 '--no-zygote',
-                '--single-process',
                 '--disable-extensions',
                 '--disable-default-apps',
                 '--disable-background-timer-throttling',
                 '--disable-renderer-backgrounding',
                 '--disable-backgrounding-occluded-windows',
-                '--virtual-time-budget=5000'
+                '--disable-ipc-flooding-protection',
+                '--disable-hang-monitor',
+                '--disable-popup-blocking',
+                '--disable-prompt-on-repost',
+                '--disable-sync',
+                '--disable-translate',
+                '--metrics-recording-only',
+                '--no-crash-upload',
+                '--disable-background-networking',
+                '--disable-default-apps',
+                '--disable-domain-reliability',
+                '--disable-component-update',
+                '--disable-client-side-phishing-detection',
+                '--disable-features=TranslateUI',
+                '--disable-features=BlinkGenPropertyTrees',
+                '--run-all-compositor-stages-before-draw',
+                '--memory-pressure-off'
             ]
         };
 
@@ -61,10 +76,34 @@ class WhatsAppService extends EventEmitter {
             });
 
             this.setupEventHandlers();
-            this.client.initialize();
+
+            // Initialize with timeout and retry logic
+            this.initializeWithRetry();
         } catch (error) {
             console.error('❌ Failed to initialize WhatsApp client:', error);
             this.emit('error', error);
+        }
+    }
+
+    async initializeWithRetry(maxRetries = 3, retryDelay = 5000) {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                console.log(`🔄 WhatsApp initialization attempt ${attempt}/${maxRetries}`);
+                await this.client.initialize();
+                console.log('✅ WhatsApp client initialized successfully');
+                return;
+            } catch (error) {
+                console.error(`❌ Initialization attempt ${attempt} failed:`, error.message);
+
+                if (attempt === maxRetries) {
+                    console.error('❌ All WhatsApp initialization attempts failed');
+                    this.emit('error', error);
+                    return;
+                }
+
+                console.log(`⏳ Waiting ${retryDelay/1000}s before retry...`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+            }
         }
     }
 
