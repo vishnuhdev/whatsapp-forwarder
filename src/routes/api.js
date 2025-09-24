@@ -120,12 +120,26 @@ router.get('/config', (req, res) => {
 
 // Health check
 router.get('/health', (req, res) => {
-    res.json({
-        status: 'healthy',
-        whatsappReady: whatsappService.isClientReady(),
-        timestamp: new Date().toISOString(),
-        selectedChats: config.getSelectedChats().size
-    });
+    try {
+        res.json({
+            status: 'healthy',
+            server: 'running',
+            whatsappReady: whatsappService ? whatsappService.isClientReady() : false,
+            timestamp: new Date().toISOString(),
+            selectedChats: config.getSelectedChats().size,
+            environment: process.env.NODE_ENV || 'development',
+            hasSlackWebhook: !!config.getSlackWebhookUrl()
+        });
+    } catch (error) {
+        console.error('Health check error:', error);
+        res.json({
+            status: 'healthy',
+            server: 'running',
+            whatsappReady: false,
+            timestamp: new Date().toISOString(),
+            error: 'WhatsApp service unavailable'
+        });
+    }
 });
 
 module.exports = router;

@@ -8,7 +8,7 @@ class WhatsAppService extends EventEmitter {
         this.client = null;
         this.isReady = false;
         this.chats = [];
-        this.initialize();
+        // Don't auto-initialize, let server control when to start
     }
 
     initialize() {
