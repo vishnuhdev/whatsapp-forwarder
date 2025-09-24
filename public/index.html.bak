@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp to Slack Forwarder</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #25d366;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .status {
+            padding: 15px;
+            margin: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .status.ready {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .main-content {
+            display: flex;
+            min-height: 500px;
+        }
+
+        .chat-list {
+            flex: 1;
+            border-right: 1px solid #e0e0e0;
+            overflow-y: auto;
+            max-height: 600px;
+        }
+
+        .selected-chats {
+            flex: 1;
+            padding: 20px;
+        }
+
+        .chat-item {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-item:hover {
+            background: #f8f8f8;
+        }
+
+        .chat-item.selected {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+
+        .chat-info {
+            flex: 1;
+        }
+
+        .chat-name {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .chat-type {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .group-badge {
+            background: #4caf50;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+            margin-left: 8px;
+        }
+
+        .unread-count {
+            background: #f44336;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 10px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .selected-item {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .remove-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .remove-btn:hover {
+            background: #d32f2f;
+        }
+
+        .stats {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .message-log {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        .message-item {
+            padding: 10px;
+            border-bottom: 1px solid #e8e8e8;
+            font-size: 14px;
+        }
+
+        .message-item:last-child {
+            border-bottom: none;
+        }
+
+        .qr-section {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .qr-code {
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        .search-box {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin: 15px;
+            width: calc(100% - 30px);
+            font-size: 14px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>WhatsApp to Slack Forwarder</h1>
+            <p>Select contacts and groups to forward messages</p>
+        </div>
+
+        <div id="status" class="status connecting">
+            🔄 Connecting to WhatsApp...
+        </div>
+
+        <div id="qr-section" class="qr-section" style="display: none;">
+            <h3>Scan QR Code with WhatsApp</h3>
+            <div id="qr-code" class="qr-code"></div>
+        </div>
+
+        <div id="main-content" class="main-content" style="display: none;">
+            <div class="chat-list">
+                <h3 style="padding: 20px 15px 0;">Available Chats</h3>
+                <input type="text" id="search" class="search-box" placeholder="Search contacts and groups...">
+                <div id="chat-list"></div>
+            </div>
+
+            <div class="selected-chats">
+                <h3 class="section-title">Selected Chats (<span id="selected-count">0</span>)</h3>
+                <div id="selected-list"></div>
+
+                <div class="stats">
+                    <h4>Statistics</h4>
+                    <p>Messages forwarded: <span id="message-count">0</span></p>
+                    <p>Active since: <span id="start-time">-</span></p>
+                </div>
+
+                <div class="message-log">
+                    <h4 style="padding: 10px;">Recent Messages</h4>
+                    <div id="message-log"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let allChats = [];
+        let selectedChats = [];
+        let messageCount = 0;
+        let startTime = new Date();
+
+        // DOM elements
+        const statusEl = document.getElementById('status');
+        const qrSection = document.getElementById('qr-section');
+        const qrCodeEl = document.getElementById('qr-code');
+        const mainContent = document.getElementById('main-content');
+        const chatListEl = document.getElementById('chat-list');
+        const selectedListEl = document.getElementById('selected-list');
+        const selectedCountEl = document.getElementById('selected-count');
+        const searchEl = document.getElementById('search');
+        const messageCountEl = document.getElementById('message-count');
+        const startTimeEl = document.getElementById('start-time');
+        const messageLogEl = document.getElementById('message-log');
+
+        // Socket event listeners
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('qr', (qr) => {
+            statusEl.textContent = '📱 Please scan the QR code with WhatsApp';
+            statusEl.className = 'status connecting';
+            qrSection.style.display = 'block';
+            qrCodeEl.textContent = qr;
+        });
+
+        socket.on('ready', (data) => {
+            statusEl.textContent = '✅ WhatsApp connected successfully!';
+            statusEl.className = 'status ready';
+            qrSection.style.display = 'none';
+            mainContent.style.display = 'flex';
+
+            allChats = data.chats;
+            startTimeEl.textContent = new Date().toLocaleString();
+            renderChats();
+        });
+
+        socket.on('chats', (chats) => {
+            allChats = chats;
+            renderChats();
+        });
+
+        socket.on('selectedChats', (selected) => {
+            selectedChats = selected;
+            renderChats();
+            renderSelectedChats();
+        });
+
+        socket.on('messageForwarded', (data) => {
+            messageCount++;
+            messageCountEl.textContent = messageCount;
+
+            // Add to message log
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message-item';
+            messageEl.innerHTML = `
+                <strong>${getChatName(data.from)}</strong><br>
+                <span style="color: #666; font-size: 12px;">${new Date(data.timestamp).toLocaleTimeString()}</span><br>
+                ${data.body}
+            `;
+            messageLogEl.appendChild(messageEl);
+            messageLogEl.scrollTop = messageLogEl.scrollHeight;
+
+            // Keep only last 10 messages
+            while (messageLogEl.children.length > 10) {
+                messageLogEl.removeChild(messageLogEl.firstChild);
+            }
+        });
+
+        // Search functionality
+        searchEl.addEventListener('input', (e) => {
+            renderChats(e.target.value);
+        });
+
+        function renderChats(filter = '') {
+            const filteredChats = allChats.filter(chat =>
+                chat.name.toLowerCase().includes(filter.toLowerCase())
+            );
+
+            chatListEl.innerHTML = filteredChats.map(chat => `
+                <div class="chat-item ${selectedChats.includes(chat.id) ? 'selected' : ''}"
+                     onclick="toggleChat('${chat.id}')">
+                    <div class="chat-info">
+                        <div class="chat-name">
+                            ${chat.name}
+                            ${chat.isGroup ? '<span class="group-badge">GROUP</span>' : ''}
+                        </div>
+                        <div class="chat-type">${chat.isGroup ? 'Group Chat' : 'Individual'}</div>
+                    </div>
+                    ${chat.unreadCount > 0 ? `<div class="unread-count">${chat.unreadCount}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function renderSelectedChats() {
+            selectedCountEl.textContent = selectedChats.length;
+
+            if (selectedChats.length === 0) {
+                selectedListEl.innerHTML = '<div class="empty-state">No chats selected</div>';
+                return;
+            }
+
+            selectedListEl.innerHTML = selectedChats.map(chatId => {
+                const chat = allChats.find(c => c.id === chatId);
+                return chat ? `
+                    <div class="selected-item">
+                        <div>
+                            <strong>${chat.name}</strong>
+                            <span style="color: #666; font-size: 12px; margin-left: 10px;">
+                                ${chat.isGroup ? 'Group' : 'Contact'}
+                            </span>
+                        </div>
+                        <button class="remove-btn" onclick="removeChat('${chatId}')">Remove</button>
+                    </div>
+                ` : '';
+            }).join('');
+        }
+
+        function toggleChat(chatId) {
+            if (selectedChats.includes(chatId)) {
+                socket.emit('deselectChat', chatId);
+            } else {
+                socket.emit('selectChat', chatId);
+            }
+        }
+
+        function removeChat(chatId) {
+            socket.emit('deselectChat', chatId);
+        }
+
+        function getChatName(chatId) {
+            const chat = allChats.find(c => c.id === chatId);
+            return chat ? chat.name : chatId;
+        }
+    </script>
+</body>
+</html>
