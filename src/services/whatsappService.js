@@ -12,9 +12,12 @@ class WhatsAppService extends EventEmitter {
     }
 
     initialize() {
+        // Determine if running in production environment
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT;
+
         // Puppeteer configuration for production deployment
         const puppeteerConfig = {
-            headless: process.env.NODE_ENV === 'production' ? 'new' : false,
+            headless: isProduction ? 'new' : false,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -23,14 +26,24 @@ class WhatsAppService extends EventEmitter {
                 '--no-first-run',
                 '--no-zygote',
                 '--single-process',
-                '--disable-gpu'
+                '--disable-gpu',
+                '--disable-web-security',
+                '--disable-features=VizDisplayCompositor',
+                '--run-all-compositor-stages-before-draw',
+                '--disable-background-timer-throttling',
+                '--disable-renderer-backgrounding',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-ipc-flooding-protection',
+                '--virtual-time-budget=5000'
             ]
         };
 
-        // Use system Chrome in production if available
-        if (process.env.NODE_ENV === 'production') {
+        // Use system Chrome in production
+        if (isProduction) {
             puppeteerConfig.executablePath = '/usr/bin/google-chrome-stable';
         }
+
+        console.log(`🔧 Initializing WhatsApp client - Production: ${isProduction}, Headless: ${puppeteerConfig.headless}`);
 
         this.client = new Client({
             authStrategy: new LocalAuth(),
