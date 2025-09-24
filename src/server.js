@@ -152,7 +152,7 @@ app.use((req, res) => {
 // Start server
 const PORT = config.getServerPort();
 server.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📱 Selected chats: ${config.getSelectedChats().size}`);
     console.log(`🔗 Slack webhook configured: ${!!config.getSlackWebhookUrl()}`);
 });

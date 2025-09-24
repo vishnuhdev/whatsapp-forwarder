@@ -13,7 +13,7 @@ class WhatsAppService extends EventEmitter {
 
     initialize() {
         // Determine if running in production environment
-        const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT;
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT || !process.env.DISPLAY;
 
         // Puppeteer configuration for production deployment
         const puppeteerConfig = {
@@ -22,28 +22,37 @@ class WhatsAppService extends EventEmitter {
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--single-process',
                 '--disable-gpu',
                 '--disable-web-security',
                 '--disable-features=VizDisplayCompositor',
-                '--run-all-compositor-stages-before-draw',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process',
+                '--disable-extensions',
+                '--disable-default-apps',
                 '--disable-background-timer-throttling',
                 '--disable-renderer-backgrounding',
                 '--disable-backgrounding-occluded-windows',
-                '--disable-ipc-flooding-protection',
                 '--virtual-time-budget=5000'
             ]
         };
 
-        // Use system Chrome in production
-        if (isProduction) {
-            puppeteerConfig.executablePath = '/usr/bin/google-chrome-stable';
+        // Force headless mode if no display available
+        if (!process.env.DISPLAY && isProduction) {
+            puppeteerConfig.headless = 'new';
+            puppeteerConfig.args.push('--headless');
         }
 
-        console.log(`🔧 Initializing WhatsApp client - Production: ${isProduction}, Headless: ${puppeteerConfig.headless}`);
+        // Use system Chrome in production
+        if (isProduction) {
+            puppeteerConfig.executablePath = process.env.CHROME_BIN || '/usr/bin/google-chrome-stable';
+        }
+
+        console.log(`🔧 Initializing WhatsApp client`);
+        console.log(`   Production: ${isProduction}`);
+        console.log(`   Headless: ${puppeteerConfig.headless}`);
+        console.log(`   Chrome Path: ${puppeteerConfig.executablePath || 'default'}`);
+        console.log(`   Display: ${process.env.DISPLAY || 'none'}`);
 
         this.client = new Client({
             authStrategy: new LocalAuth(),

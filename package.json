@@ -4,7 +4,8 @@
   "description": "Forward WhatsApp messages to Slack with web interface",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "bash start.sh",
+    "start:direct": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
