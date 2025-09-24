@@ -12,12 +12,29 @@ class WhatsAppService extends EventEmitter {
     }
 
     initialize() {
+        // Puppeteer configuration for production deployment
+        const puppeteerConfig = {
+            headless: process.env.NODE_ENV === 'production' ? 'new' : false,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process',
+                '--disable-gpu'
+            ]
+        };
+
+        // Use system Chrome in production if available
+        if (process.env.NODE_ENV === 'production') {
+            puppeteerConfig.executablePath = '/usr/bin/google-chrome-stable';
+        }
+
         this.client = new Client({
             authStrategy: new LocalAuth(),
-            puppeteer: {
-                headless: false,
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
-            }
+            puppeteer: puppeteerConfig
         });
 
         this.setupEventHandlers();
