@@ -54,13 +54,18 @@ class WhatsAppService extends EventEmitter {
         console.log(`   Chrome Path: ${puppeteerConfig.executablePath || 'default'}`);
         console.log(`   Display: ${process.env.DISPLAY || 'none'}`);
 
-        this.client = new Client({
-            authStrategy: new LocalAuth(),
-            puppeteer: puppeteerConfig
-        });
+        try {
+            this.client = new Client({
+                authStrategy: new LocalAuth(),
+                puppeteer: puppeteerConfig
+            });
 
-        this.setupEventHandlers();
-        this.client.initialize();
+            this.setupEventHandlers();
+            this.client.initialize();
+        } catch (error) {
+            console.error('❌ Failed to initialize WhatsApp client:', error);
+            this.emit('error', error);
+        }
     }
 
     setupEventHandlers() {

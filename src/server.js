@@ -28,6 +28,15 @@ app.use(express.static(path.join(__dirname, '../public')));
 // API Routes
 app.use('/api', apiRoutes);
 
+// Root health check for Railway
+app.get('/', (req, res) => {
+    res.json({
+        status: 'healthy',
+        message: 'WhatsApp to Slack Forwarder is running',
+        timestamp: new Date().toISOString()
+    });
+});
+
 // Socket.io connection handling
 io.on('connection', (socket) => {
     console.log('🔌 Client connected');
@@ -130,6 +139,11 @@ whatsappService.on('message', async (msg) => {
 whatsappService.on('disconnected', (reason) => {
     console.log('❌ WhatsApp disconnected:', reason);
     io.emit('whatsappDisconnected', { reason });
+});
+
+whatsappService.on('error', (error) => {
+    console.error('❌ WhatsApp service error:', error.message);
+    io.emit('whatsappError', { error: error.message });
 });
 
 // Error handling middleware
