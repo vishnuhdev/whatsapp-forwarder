@@ -28,8 +28,13 @@ app.use(express.static(path.join(__dirname, '../public')));
 // API Routes
 app.use('/api', apiRoutes);
 
-// Root health check for Railway
+// Serve the main HTML file at root
 app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// Health check endpoint for monitoring
+app.get('/health', (req, res) => {
     res.json({
         status: 'healthy',
         message: 'WhatsApp to Slack Forwarder is running',
