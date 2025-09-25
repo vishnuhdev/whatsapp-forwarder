@@ -1,4 +1,5 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
+const path = require('path');
 const qrcode = require('qrcode-terminal');
 const EventEmitter = require('events');
 
@@ -70,8 +71,17 @@ class WhatsAppService extends EventEmitter {
         console.log(`   Display: ${process.env.DISPLAY || 'none'}`);
 
         try {
+            // Use Railway volume path if available, otherwise use default
+            const dataPath = process.env.RAILWAY_VOLUME_MOUNT_PATH
+                ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, '.wwebjs_auth')
+                : '.wwebjs_auth';
+
+            console.log(`📁 Using session data path: ${dataPath}`);
+
             this.client = new Client({
-                authStrategy: new LocalAuth(),
+                authStrategy: new LocalAuth({
+                    dataPath: dataPath
+                }),
                 puppeteer: puppeteerConfig
             });
 

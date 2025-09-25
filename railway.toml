@@ -4,3 +4,6 @@ builder = "DOCKERFILE"
 [deploy]
 startCommand = "npm start"
 restartPolicyType = "ON_FAILURE"
+
+[mounts]
+"/app/data" = "whatsapp_session_data"
